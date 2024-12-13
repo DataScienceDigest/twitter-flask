@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 # Setup the Twikit client
 client = Client('en-US')
-client.load_cookies(r'C:\Users\hp\Documents\telegram bot test\online-twitter\cookies.json')
+client.load_cookies('cookies.json')
 
 # Global event loop and iterator
 loop = asyncio.get_event_loop()
