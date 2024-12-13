@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f8fa;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 20px 0;
+            color: #1da1f2;
+        }
+
+        #query {
+            width: calc(100% - 40px);
+            max-width: 400px;
+            padding: 10px;
+            margin: 0 auto 10px;
+            display: block;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            display: block;
+            width: calc(100% - 40px);
+            max-width: 200px;
+            margin: 10px auto;
+            padding: 10px;
+            background-color: #1da1f2;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0d8bf2;
+        }
+
+        #tweets {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+
+        #tweets li {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+
+        #tweets p {
+            margin: 0 0 10px;
+            font-size: 16px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* img {
+            max-width: 100%;
+            height: auto;
+            width: 300px;
+            border-radius: 5px;
+        } */
+
+        video {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 10px 0;
+            
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            #query,
+            button {
+                width: calc(100% - 20px);
+            }
+
+            #tweets li {
+                padding: 10px;
+            }
+
+            #tweets p {
+                font-size: 14px;
+            }
+        }
+    </style>
+    <script>
+        async function searchTweets() {
+            const query = document.getElementById("query").value;
+            const response = await fetch('/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `query=${query}`
+            });
+            const data = await response.json();
+            displayTweets(data.tweets, true); // `true` indicates this is a new search
+        }
+
+        async function nextTweets() {
+            const response = await fetch('/next');
+            const data = await response.json();
+            displayTweets(data.tweets, false); // `false` indicates appending tweets
+        }
+
+        function downloadMedia(mediaUrl) {
+            const link = document.createElement('a');
+            link.href = `/download_media?media_url=${encodeURIComponent(mediaUrl)}`;
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function displayTweets(tweets, isNewSearch) {
+            const tweetList = document.getElementById("tweets");
+            if (isNewSearch) {
+                tweetList.innerHTML = ""; // Clear existing tweets only for new search
+            }
+
+            tweets.forEach(tweet => {
+                const li = document.createElement("li");
+
+                // Display the tweet text
+                const tweetText = document.createElement("p");
+                tweetText.textContent = tweet.tweets;
+                li.appendChild(tweetText);
+
+                // Display images if there are any
+                if (tweet.image_urls && tweet.image_urls.length > 0) {
+                    tweet.image_urls.forEach(url => {
+                        const img = document.createElement("img");
+                        img.src = url;
+                        img.alt = "Tweet Image";
+                        img.style.width = "200px";
+                       
+                        img.style.margin = "10px auto 10px 40px"; // Top: 10px, Right: auto, Bottom: 10px, Left: 40px
+                        const downloadButton = document.createElement("button");
+                        downloadButton.textContent = "Download Image";
+                        downloadButton.onclick = () => downloadMedia(url);
+
+                        li.appendChild(img);
+                        li.appendChild(downloadButton);
+                    });
+                }
+
+                // Display videos if there are any
+                if (tweet.video_urls && tweet.video_urls.length > 0) {
+                    tweet.video_urls.forEach(url => {
+                        const video = document.createElement("video");
+                        video.src = url;
+                        video.controls = true;
+                        video.style.width = "300px"; // Adjust width as needed
+                        video.style.margin = "10px";
+
+                        const downloadButton = document.createElement("button");
+                        downloadButton.textContent = "Download Video";
+                        downloadButton.onclick = () => downloadMedia(url);
+
+                        li.appendChild(video);
+                        li.appendChild(downloadButton);
+                    });
+                }
+
+                // Append the tweet (with media) to the list
+                tweetList.appendChild(li);
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <h1>Twitter Search</h1>
+    <input type="text" id="query" placeholder="Enter keyword">
+    <button onclick="searchTweets()">Search</button>
+    <ul id="tweets"></ul>
+    <button onclick="nextTweets()">Next</button>
+</body>
+
+</html>
