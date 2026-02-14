@@ -1,5 +1,0 @@
-asyncio
-Flask
-twikit
-nest-asyncio
-requests
