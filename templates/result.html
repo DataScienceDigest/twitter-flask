@@ -305,6 +305,58 @@
             margin: 24px 0;
         }
 
+        /* ── Portal Brains Section ── */
+        .portal-brains-section {
+            background: #1a1a2e;
+            border: 1px solid #f0a50044;
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin-bottom: 28px;
+        }
+
+        .portal-brains-section h3 {
+            color: #f0a500;
+            font-size: 1rem;
+            margin-bottom: 14px;
+        }
+
+        .pb-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .pb-badge {
+            background: #f0a50022;
+            color: #f0a500;
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid #f0a50055;
+        }
+
+        .pb-date {
+            color: #888;
+            font-size: 0.82rem;
+        }
+
+        .pb-heading {
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0a50022;
+        }
+
+        .pb-content {
+            color: #bbb;
+            font-size: 0.85rem;
+            line-height: 1.85;
+            white-space: pre-line;
+        }
+
         /* ── Run Again Button ── */
         .run-again {
             text-align: center;
@@ -390,6 +442,18 @@
     </div>
     {% endif %}
 
+    {% if portal_brains %}
+    <div class="portal-brains-section">
+        <h3>🧠 Trade Brains Portal — Stock Alert</h3>
+        <div class="pb-meta">
+            <span class="pb-badge">Direct Content</span>
+            <span class="pb-date">{{ portal_brains.date }} {{ portal_brains.time }}</span>
+        </div>
+        <div class="pb-heading">{{ portal_brains.heading }}</div>
+        <div class="pb-content">{{ portal_brains.content }}</div>
+    </div>
+    {% endif %}
+
     <div class="result-section">
         <h3>Gemini Analysis</h3>
         <div id="markdown-output"></div>
@@ -403,7 +467,7 @@
 
     <script>
         // Render markdown result
-        const raw = {{ result | tojson }};
+        const raw = {{ result | tojson | safe }};
         document.getElementById("markdown-output").innerHTML = marked.parse(raw);
     </script>
 

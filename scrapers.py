@@ -7,6 +7,7 @@ from urllib.parse import urlencode, urljoin
 from datetime import datetime
 
 ALL_ARTICLES_LINKS = []
+PORTAL_BRAINS_CONTENT = None
 
 # ─── Shared Headers ───────────────────────────────────────────────────────────
 headers = {
@@ -223,11 +224,12 @@ def scrape_business_standard():
 def scrape_ndtv_profit():
     print("Processing NDTV Profit Started")
 
-    BASE_URL = "https://www.ndtvprofit.com/profit/article-load-more/page/{page}/category/market-news"
+    ndtv_base_url = "https://www.ndtvprofit.com/profit/article-load-more/page/{page}/category/market-news"
     START_PAGE = 0
     END_PAGE = 5
     link_list_ndtv = []
 
+    # Exactly matching the tested working headers — Host header removed to avoid conflict
     ndtv_headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Encoding": "gzip, deflate, br, zstd",
@@ -244,53 +246,57 @@ def scrape_ndtv_profit():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
     }
 
-    def scrape_page(page_num):
-        url = BASE_URL.format(page=page_num)
+    all_articles = []
+
+    for page_num in range(START_PAGE, END_PAGE + 1):
+        url = ndtv_base_url.format(page=page_num)
         response = requests.get(url, headers=ndtv_headers, timeout=30)
+
         print(f"Page {page_num} → Status: {response.status_code}")
 
         if response.status_code != 200:
-            print(f"Skipping page {page_num}")
-            return []
+            print(f"  ⚠ Skipping page {page_num}")
+            continue
 
         soup = BeautifulSoup(response.text, "html.parser")
         articles = soup.find_all("li", class_="NwsLstPg-a-li")
 
         results = []
         for article in articles:
+            # Title
             title_tag = article.find("a", class_="NwsLstPg_ttl")
             title = title_tag.get_text(strip=True) if title_tag else "N/A"
-            url = title_tag["href"] if title_tag and title_tag.has_attr("href") else "N/A"
+            art_url = title_tag["href"] if title_tag and title_tag.has_attr("href") else "N/A"
 
+            # Description
             desc_tag = article.find("p", class_="NwsLstPg_txt")
             description = desc_tag.get_text(strip=True) if desc_tag else "N/A"
 
+            # Thumbnail Image
             img_tag = article.find("img", class_="NwsLstPg_img-full")
             image_url = img_tag["src"] if img_tag and img_tag.has_attr("src") else "N/A"
 
+            # Date & Author
             meta_items = article.find_all("li", class_="NwsLstPg_pst_li")
-            date = meta_items[0].get_text(strip=True) if len(meta_items) > 0 else "N/A"
+            date   = meta_items[0].get_text(strip=True) if len(meta_items) > 0 else "N/A"
             author = meta_items[1].get_text(strip=True) if len(meta_items) > 1 else "N/A"
 
             results.append({
-                "title": title,
-                "url": url,
+                "title"      : title,
+                "url"        : art_url,
                 "description": description,
-                "date": date,
-                "author": author,
-                "image_url": image_url,
-                "page": page_num,
+                "date"       : date,
+                "author"     : author,
+                "image_url"  : image_url,
+                "page"       : page_num,
             })
 
-        return results
+        all_articles.extend(results)
+        print(f"  → {len(results)} articles found")
 
-    all_articles = []
-    for page in range(START_PAGE, END_PAGE + 1):
-        articles = scrape_page(page)
-        all_articles.extend(articles)
-        print(f"  → {len(articles)} articles found")
-
-    print(f"\nTotal articles scraped: {len(all_articles)}")
+    print(f"\n{'='*60}")
+    print(f"Total articles scraped: {len(all_articles)}")
+    print(f"{'='*60}\n")
 
     keywords = ["stocks to watch", "stocks to buy"]
     filtered = [a for a in all_articles if any(kw in a["title"].lower() for kw in keywords)]
@@ -335,13 +341,11 @@ def scrape_business_today():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0",
         "Accept": "application/json, text/html, */*",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
         "Referer": "https://www.businesstoday.in/",
         "Connection": "keep-alive",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "Upgrade-Insecure-Requests": "1",
     }
 
     BASE_URL = "https://www.businesstoday.in/api/loadmoredata"
@@ -582,10 +586,60 @@ def scrape_economic_times():
     print("Processing Economic Times Done")
 
 
+
+# ─── 9. PORTAL BRAINS ────────────────────────────────────────────────────────
+def scrape_portal_brains():
+
+    print("Processing Portal Brains Started")
+    try:
+        url = "https://portal.tradebrains.in/api/news/all/stock-alert/?format=json&page=1&per_page=50"
+        response = requests.get(url, headers={"Content-Type": "application/json"})
+        data = response.json()['results'][0]
+
+        print(f"Date    : {data['date']} {data['time']}")
+        print(f"Heading : {data['heading']}")
+
+        # Strip HTML tags from content
+        soup = BeautifulSoup(data['content'], "html.parser")
+        plain_text = soup.get_text(separator=" ", strip=True)
+
+        PORTAL_BRAINS_CONTENT = {
+            "heading" : data['heading'],
+            "date"    : data['date'],
+            "time"    : data['time'],
+            "content" : plain_text,
+        }
+
+        print("Portal Brains content captured.")
+        return PORTAL_BRAINS_CONTENT
+    except Exception as e:
+        print(f"Error in Portal Brains scraper: {e}")
+    print("Processing Portal Brains Done")
+
+
+# ─── 10. ETNOW ─────────────────────────────────────────────────────────────────
+def scrape_etnow():
+    print("Processing ETNow Started")
+    try:
+        base_url = 'https://www.etnownews.com/'
+        url = 'https://api.etnownews.com/api/search?searchterms=stocks-to-watch&row=1477&start=0'
+        response = requests.get(url, headers={'Accept': 'application/json'})
+        i = response.json()['response']['article'][0]
+        end_url = f"-article-{i['msid']}"
+        final_url = base_url + i['seopath'] + end_url
+        print(i['title'])
+        print(final_url)
+        ALL_ARTICLES_LINKS.append(final_url)
+    except Exception as e:
+        print(f"Error in ETNow scraper: {e}")
+    print("Processing ETNow Done")
+
+
 # ─── MAIN FUNCTION ────────────────────────────────────────────────────────────
 def run_all_scrapers():
     global ALL_ARTICLES_LINKS
     ALL_ARTICLES_LINKS = []
+   
 
     scrape_upstox()
     scrape_mint()
@@ -595,6 +649,8 @@ def run_all_scrapers():
     scrape_ndtv_profit()
     scrape_business_today()
     scrape_economic_times()
+    PORTAL_BRAINS_CONTENT= scrape_portal_brains()
+    scrape_etnow()
 
     print("\n" + "=" * 60)
     print(f"Total links collected: {len(ALL_ARTICLES_LINKS)}")
@@ -602,4 +658,4 @@ def run_all_scrapers():
         print(f"{idx}. {link}")
     print("=" * 60)
 
-    return ALL_ARTICLES_LINKS
+    return ALL_ARTICLES_LINKS, PORTAL_BRAINS_CONTENT

@@ -187,16 +187,34 @@ def extract_markdown_blocks(raw_response: str) -> list:
 
 
 # ─── MAIN FUNCTION ────────────────────────────────────────────────────────────
-def process_links(links: list) -> str:
+def process_links(links: list, portal_brains: dict = None) -> str:
     """
-    Takes a list of URLs, sends to Gemini, returns parsed text result.
+    Takes a list of URLs + optional Portal Brains content dict,
+    sends everything to Gemini, returns parsed text result.
     """
-    if not links:
-        return "No links provided."
+    if not links and not portal_brains:
+        return "No links or content provided."
 
-    news_data = "\n".join(links)
+    # Build news_data: URLs first
+    news_data = "\n".join(links) if links else ""
 
-    print(f"\nSending {len(links)} links to Gemini...")
+    # Append Portal Brains content as direct text (no URL)
+    if portal_brains:
+        news_data += f"""
+
+---
+
+**Additional Source: Trade Brains Portal (Stock Alert — Direct Content)**
+Date: {portal_brains.get('date', 'N/A')} {portal_brains.get('time', 'N/A')}
+Heading: {portal_brains.get('heading', 'N/A')}
+
+Content:
+{portal_brains.get('content', 'N/A')}
+
+---
+"""
+
+    print(f"\nSending {len(links)} URLs + Portal Brains content to Gemini...")
     raw_response = gem_sentiment(news_data)
 
     if not raw_response:
